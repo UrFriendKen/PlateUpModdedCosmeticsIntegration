@@ -22,7 +22,7 @@ namespace ModdedCosmeticsIntegration.Grids
         {
             if (Player != 0 && cosmetic != null)
             {
-                Players.Main.SetCosmetic(Player, cosmetic);
+                ProfileAccessor.SetCosmetic(Player, cosmetic);
             }
         }
     }

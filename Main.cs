@@ -15,7 +15,7 @@ namespace ModdedCosmeticsIntegration
     {
         public const string MOD_GUID = $"IcedMilo.PlateUp.{MOD_NAME}";
         public const string MOD_NAME = "ModdedCosmeticsIntegration";
-        public const string MOD_VERSION = "0.1.0";
+        public const string MOD_VERSION = "0.1.2";
 
         Harmony _harmony;
 
@@ -30,46 +30,111 @@ namespace ModdedCosmeticsIntegration
             LogWarning($"{MOD_GUID} v{MOD_VERSION} in use!");
         }
 
-        public void PreInject()
+        void AddModdedHats()
         {
+            int maxHatsPageNumber = -1;
+            GridMenuGenericConfig maxHatsPage = null;
+            List<PlayerCosmetic> usedCosmetics = new List<PlayerCosmetic>();
+            Texture2D hatsIcon = null;
+            Texture2D nextPageIcon = Resources.FindObjectsOfTypeAll<Texture2D>().Where(x => x.name == "menu_right").FirstOrDefault();
+
             foreach (GridMenuGenericConfig config in Resources.FindObjectsOfTypeAll<GridMenuGenericConfig>())
             {
-                if (config.name == "Hats")
+                if (!config.name.StartsWith("Hats - Page ") ||
+                    !int.TryParse(config.name.Last().ToString(), out int hatsPageNumber))
+                    continue;
+
+                if (config.name == "Hats - Page 1")
                 {
-                    bool found = false;
-                    List<PlayerCosmetic> used = new List<PlayerCosmetic>();
-                    for (int i = 0; i < config.Items.Count; i++)
+                    hatsIcon = config.Icon;
+
+                    if (nextPageIcon == null)
                     {
-                        if (config.Items[i] is GridItemCosmetic gridItemCosmetic)
+                        for (int i = config.Items.Count - 1; i > -1; i--)
                         {
-                            used.Add(gridItemCosmetic.Cosmetic);
-                            continue;
-                        }
-                        if (config.Items[i] is GridItemNavigation gridItemNav && gridItemNav.Config is GridMenuCosmeticConfig cosmeticGridConfig)
-                        {
-                            used.AddRange(cosmeticGridConfig.Cosmetics);
-                            continue;
-                        }
-                        if (config.Items[i] is CustomGridMenuCosmeticConfig customCosmeticGrid)
-                        {
-                            found = true;
+                            if (!(config.Items[i] is GridItemNavigation navItem))
+                                continue;
+                            nextPageIcon = navItem.Config.Icon;
                             break;
                         }
                     }
-                    if (!found)
+                }
+                HashSet<GridMenuGenericConfig> seenConfigs = new HashSet<GridMenuGenericConfig>();
+
+                void RecursiveAddUsedCosmetics(GridMenuGenericConfig genericConfig)
+                {
+                    if (seenConfigs.Contains(genericConfig))
+                        return;
+
+                    seenConfigs.Add(genericConfig);
+                    foreach (IGridItem gridItem in genericConfig.Items)
                     {
-                        CustomGridMenuCosmeticConfig gridConfig = ScriptableObject.CreateInstance<CustomGridMenuCosmeticConfig>();
-                        gridConfig.name = "Hats - Modded";
-                        gridConfig.Icon = config.Icon;
-                        gridConfig.Cosmetics = GameData.Main.Get<PlayerCosmetic>().Where(x => (x.CosmeticType == CosmeticType.Hat) && !x.DisableInGame && !used.Contains(x)).ToList();
-                        config.Items.Add(new GridItemNavigation()
+                        if (gridItem is GridItemCosmetic gridItemCosmetic)
                         {
-                            Config = gridConfig
-                        });
+                            usedCosmetics.Add(gridItemCosmetic.Cosmetic);
+                            continue;
+                        }
+
+                        if (gridItem is GridItemNavigation gridItemNav && gridItemNav.Config)
+                        {
+                            if (gridItemNav.Config is GridMenuCosmeticConfig cosmeticGridConfig)
+                                usedCosmetics.AddRange(cosmeticGridConfig.Cosmetics);
+                            else if (gridItemNav.Config is GridMenuGenericConfig childGenericConfig)
+                                RecursiveAddUsedCosmetics(childGenericConfig);
+                        }
                     }
+                }
+
+                RecursiveAddUsedCosmetics(config);
+
+                if (hatsPageNumber > maxHatsPageNumber)
+                {
+                    maxHatsPage = config;
+                    maxHatsPageNumber = hatsPageNumber;
                 }
             }
 
+            if (maxHatsPage != null)
+            {
+                GridMenuGenericConfig gridConfig = null;
+
+                List<PlayerCosmetic> moddedCosmetics = GameData.Main.Get<PlayerCosmetic>().Where(x => (x.CosmeticType == CosmeticType.Hat) && !x.DisableInGame && !usedCosmetics.Contains(x)).ToList();
+
+                for (int i = 0; i < moddedCosmetics.Count; i++)
+                {
+                    if (gridConfig == null || i % 6 == 0)
+                    {
+                        GridMenuGenericConfig nextGridConfig = ScriptableObject.CreateInstance<GridMenuGenericConfig>();
+                        nextGridConfig.Icon = nextPageIcon;
+                        nextGridConfig.name = $"Hats - Modded Page {i / 6 + 1}";
+                        nextGridConfig.Items = new List<IGridItem>();
+                        if (gridConfig != null)
+                        {
+                            gridConfig.Items.Add(new GridItemNavigation()
+                            {
+                                Config = nextGridConfig
+                            });
+                        }
+                        else
+                        {
+                            nextGridConfig.Icon = hatsIcon;
+                            maxHatsPage.Items.Add(new GridItemNavigation()
+                            {
+                                Config = nextGridConfig
+                            });
+                        }
+                        gridConfig = nextGridConfig;
+                    }
+                    gridConfig.Items.Add(new GridItemCosmetic()
+                    {
+                        Cosmetic = moddedCosmetics[i]
+                    });
+                }
+            }
+        }
+
+        void AddModdedOutfits()
+        {
             foreach (GridMenuNavigationConfig config in Resources.FindObjectsOfTypeAll<GridMenuNavigationConfig>())
             {
                 if (config.name == "Root")
@@ -84,18 +149,15 @@ namespace ModdedCosmeticsIntegration
                             gridConfig.Cosmetics = GameData.Main.Get<PlayerCosmetic>().Where(x => x.CosmeticType == CosmeticType.Outfit && !x.DisableInGame).ToList();
                             config.Links[i] = gridConfig;
                         }
-
-                        if (config.Links[i].name == "Hats" && config.Links[i] is GridMenuGenericConfig hatsConfig)
-                        {
-                            CustomGridMenuGenericConfig gridConfig = ScriptableObject.CreateInstance<CustomGridMenuGenericConfig>();
-                            gridConfig.name = "CustomHats";
-                            gridConfig.Icon = config.Links[i].Icon;
-                            gridConfig.Items = hatsConfig.Items;
-                            config.Links[i] = gridConfig;
-                        }
                     }
                 }
             }
+        }
+
+        public void PreInject()
+        {
+            AddModdedHats();
+            AddModdedOutfits();
         }
 
         //protected void SavePNG(string name, string folderName, byte[] bytes)

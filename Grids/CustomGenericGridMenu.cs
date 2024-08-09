@@ -26,7 +26,7 @@ namespace ModdedCosmeticsIntegration.Grids
                     GridItemCosmetic gridItemCosmetic = (GridItemCosmetic)(object)item;
                     if (Player != 0 && gridItemCosmetic.Cosmetic != null)
                     {
-                        Players.Main.SetCosmetic(Player, gridItemCosmetic.Cosmetic);
+                        ProfileAccessor.SetCosmetic(Player, gridItemCosmetic.Cosmetic);
                     }
                 }
             }
