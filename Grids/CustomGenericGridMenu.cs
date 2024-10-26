@@ -3,7 +3,7 @@ using Kitchen.Modules;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ModdedCosmeticsIntegration.Grids
+namespace KitchenModdedCosmeticsIntegration.Grids
 {
     public class CustomGenericGridMenu : CustomGridMenu<IGridItem>
     {

@@ -5,7 +5,7 @@ using Kitchen.Modules;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ModdedCosmeticsIntegration.Grids
+namespace KitchenModdedCosmeticsIntegration.Grids
 {
     [HarmonyPatch]
     static class CustomGridMenu_Patch

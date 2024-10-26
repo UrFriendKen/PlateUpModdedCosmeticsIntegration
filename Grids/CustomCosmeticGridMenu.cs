@@ -4,7 +4,7 @@ using KitchenData;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ModdedCosmeticsIntegration.Grids
+namespace KitchenModdedCosmeticsIntegration.Grids
 {
     public class CustomCosmeticGridMenu : CustomGridMenu<PlayerCosmetic>
     {

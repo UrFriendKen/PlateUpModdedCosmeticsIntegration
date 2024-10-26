@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 
-namespace ModdedCosmeticsIntegration.Patches
+namespace KitchenModdedCosmeticsIntegration.Patches
 {
     [HarmonyPatch]
     static class PrefabSnapshot_Patch
